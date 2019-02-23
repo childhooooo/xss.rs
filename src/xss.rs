@@ -9,7 +9,7 @@ pub struct XSS {
     on_ignore_tag: Option<Box<FnMut(Position, HTMLTag) -> Option<String>>>,
     on_tag_attr: Option<Box<FnMut(Position, HTMLTagAttribute) -> Option<String>>>,
     on_ignore_tag_attr: Option<Box<FnMut(Position, HTMLTagAttribute) -> Option<String>>>,
-    allowed_tags: HashMap<String, String>,
+    allowed_tags: HashMap<String, Vec<String>>,
 }
 
 impl XSS {
@@ -44,9 +44,7 @@ impl XSS {
     }
 
     pub fn set_allow_tag(&mut self, name: &str, attrs: Vec<&str>) {
-        for attr in attrs {
-            self.allowed_tags.insert(name.to_string(), attr.to_string());
-        }
+        self.allowed_tags.insert(name.to_string(), attrs.into_iter().map(|s| s.to_string()).collect());
     }
 
     pub fn use_default_white_list(&mut self) {
@@ -60,19 +58,19 @@ impl XSS {
     pub fn sanitize(&self, html: &str) -> String {
         let mut ret_html = "".to_string();
         for (_, tag) in tag_iter(html) {
-            println!("{:?}", tag);
+            //println!("{:?}", tag);
             match tag.state {
                 HTMLTagState::Text => ret_html.push_str(&tag.html),
                 HTMLTagState::Closing | HTMLTagState::Opening | HTMLTagState::SelfClosing => {
                     match self.allowed_tags.get(&tag.name) {
                         None => ret_html.push_str(&(self.escape(&tag.html))),
                         Some(allowed_attrs) => {
-                            println!("{:?}", allowed_attrs);
+                            //println!("{:?}", allowed_attrs);
                             let mut attrs = "".to_string();
                             for (_, attr) in attr_iter(&tag.attributes) {
-                                println!("{:?}", attr);
+                                //println!("{:?}", attr);
                                 if allowed_attrs.contains(&attr.name) {
-                                    println!("{:?} contains {:?}", allowed_attrs, attr.name);
+                                    //println!("{:?} contains {:?}", allowed_attrs, attr.name);
                                     if attr.value.is_empty() {
                                         attrs.push_str(&attr.name);
                                     } else {
